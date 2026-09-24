@@ -5,13 +5,13 @@ namespace EasyPeasyFirstPersonController
     public partial class FirstPersonController : MonoBehaviour
     {
         [Header("Settings")]
-        public float walkSpeed = 3f;
-        public float sprintSpeed = 5f;
-        public float crouchSpeed = 1.5f;
-        public float jumpSpeed = 4f;
-        public float gravity = 9.81f;
-        public float slideDuration = 0.7f;
-        public float slideSpeed = 6f;
+        public float walkSpeed = 6f;
+        public float sprintSpeed = 12f;
+        public float crouchSpeed = 4f;
+        public float jumpSpeed = 10f;
+        public float gravity = 181f;
+        public float slideDuration = 0.75f;
+        public float slideSpeed = 10f;
         public float mouseSensitivity = 2f;
         public float strafeTiltAmount = 2f;
 
