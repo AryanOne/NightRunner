@@ -10,10 +10,15 @@ namespace EasyPeasyFirstPersonController
         public float crouchSpeed = 4f;
         public float jumpSpeed = 10f;
         public float gravity = 181f;
+
         public float slideDuration = 0.75f;
         public float slideSpeed = 10f;
         public float mouseSensitivity = 2f;
         public float strafeTiltAmount = 2f;
+
+        [Header("Variable Jump")]
+        public float jumpCutMultiplier = 0.65f;
+        public float jumpCutSmoothness = 12f;
 
         [Header("Movement Polish")]
         public float groundAcceleration = 50f;
