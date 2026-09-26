@@ -23,6 +23,7 @@ namespace EasyPeasyFirstPersonController
         [Header("Movement Polish")]
         public float groundAcceleration = 50f;
         public float groundDeceleration = 60f;
+        public float airControl = 12f;
         [HideInInspector] public Vector3 currentVelocity;
 
         [Header("Advanced Mechanics")]

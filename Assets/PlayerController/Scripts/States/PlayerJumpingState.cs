@@ -83,9 +83,12 @@ namespace EasyPeasyFirstPersonController
 
             targetMove = Vector3.ClampMagnitude(targetMove, 1f);
 
-            Vector3 targetVelocity = targetMove * ctx.walkSpeed;
+            float speed = ctx.input.sprint ? ctx.sprintSpeed : ctx.walkSpeed;
 
-            float airAccel = 5f;
+            Vector3 targetVelocity = targetMove * speed;
+
+            // Stronger air control for parkour-style movement
+            float airAccel = ctx.airControl;
 
             ctx.currentVelocity = Vector3.MoveTowards(
                 ctx.currentVelocity,
@@ -95,6 +98,7 @@ namespace EasyPeasyFirstPersonController
 
             Vector3 finalMove = ctx.currentVelocity;
 
+            // Y is handled by ApplyGravity
             finalMove.y = 0;
 
             ctx.characterController.Move(

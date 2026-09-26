@@ -49,18 +49,32 @@ namespace EasyPeasyFirstPersonController
         private void HandleAirMovement()
         {
             Vector2 input = ctx.input.moveInput;
-            Vector3 targetMove = ctx.transform.right * input.x + ctx.transform.forward * input.y;
+
+            Vector3 targetMove =
+                ctx.transform.right * input.x +
+                ctx.transform.forward * input.y;
+
             targetMove = Vector3.ClampMagnitude(targetMove, 1f);
-            
-            Vector3 targetVelocity = targetMove * ctx.walkSpeed;
-            float airAccel = 5f;
-            
-            ctx.currentVelocity = Vector3.MoveTowards(ctx.currentVelocity, targetVelocity, airAccel * Time.deltaTime);
-            
+
+            float speed = ctx.input.sprint ? ctx.sprintSpeed : ctx.walkSpeed;
+
+            Vector3 targetVelocity = targetMove * speed;
+
+            float airAccel = ctx.airControl;
+
+            ctx.currentVelocity = Vector3.MoveTowards(
+                ctx.currentVelocity,
+                targetVelocity,
+                airAccel * Time.deltaTime
+            );
+
             Vector3 finalMove = ctx.currentVelocity;
-            finalMove.y = 0; 
-            
-            ctx.characterController.Move(finalMove * Time.deltaTime);
+
+            finalMove.y = 0;
+
+            ctx.characterController.Move(
+                finalMove * Time.deltaTime
+            );
         }
     }
 }
