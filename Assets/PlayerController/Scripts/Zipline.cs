@@ -1,13 +1,17 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using EasyPeasyFirstPersonController;
 
-public class SimpleZipline : MonoBehaviour
+public class Zipline : MonoBehaviour
 {
     [Header("Zipline Targets")]
     public Transform endPoint;
+
+    [Header("Speed")]
     public float speed = 12f;
 
-    [Header("Visibility Offsets")]
+    [Header("Player Position")]
     public float sideOffset = 0.4f;
     public float hangDistance = 1.8f;
 
@@ -15,66 +19,239 @@ public class SimpleZipline : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player") && !isZipping)
+        if (isZipping)
+            return;
+
+        if (!other.CompareTag("Player"))
+            return;
+
+        FirstPersonController controller =
+            other.GetComponent<FirstPersonController>();
+
+        if (controller == null)
         {
-            StartCoroutine(RideZipline(other.gameObject));
+            Debug.LogWarning(
+                "SimpleZipline: Player does not have FirstPersonController."
+            );
+
+            return;
         }
+
+        StartCoroutine(
+            RideZipline(
+                other.gameObject,
+                controller
+            )
+        );
     }
 
-    IEnumerator RideZipline(GameObject player)
+    private IEnumerator RideZipline(
+        GameObject player,
+        FirstPersonController controller)
     {
         isZipping = true;
 
-        CharacterController controller = player.GetComponent<CharacterController>();
-        Rigidbody rb = player.GetComponent<Rigidbody>();
+        CharacterController characterController =
+            controller.characterController;
 
-        if (controller != null) controller.enabled = false;
-        if (rb != null) rb.isKinematic = true;
-
-        // 1. Calculate stable direction vectors based on markers
-        Vector3 heading = endPoint.position - transform.position;
-        Vector3 lineDir = heading.normalized;
-
-        Vector3 flatHeading = new Vector3(heading.x, 0, heading.z).normalized;
-        Vector3 rightOffsetDirection = new Vector3(flatHeading.z, 0, -flatHeading.x);
-        Vector3 totalOffset = (rightOffsetDirection * sideOffset) - new Vector3(0, hangDistance, 0);
-
-        Vector3 startPosWithOffset = transform.position + totalOffset;
-        Vector3 targetPosWithOffset = endPoint.position + totalOffset;
-
-        // 2. Project player onto the track to prevent teleporting
-        Vector3 lhs = player.transform.position - startPosWithOffset;
-        float dotP = Vector3.Dot(lhs, lineDir);
-        dotP = Mathf.Clamp(dotP, 0f, heading.magnitude);
-        Vector3 caughtPositionOnLine = startPosWithOffset + (lineDir * dotP);
-
-        player.transform.position = caughtPositionOnLine;
-
-        // 3. Set facing direction ONCE at the start of the ride instead of locking it every frame
-        Quaternion fixedZiplineRotation = Quaternion.LookRotation(flatHeading, Vector3.up);
-        player.transform.rotation = fixedZiplineRotation;
-
-        // 4. Move smoothly down the rail while allowing camera rotation
-        while (Vector3.Distance(player.transform.position, targetPosWithOffset) > 0.05f)
+        if (characterController == null)
         {
-            player.transform.position = Vector3.MoveTowards(
-                player.transform.position,
-                targetPosWithOffset,
-                speed * Time.deltaTime
+            characterController =
+                player.GetComponent<CharacterController>();
+        }
+
+        if (characterController == null)
+        {
+            Debug.LogWarning(
+                "SimpleZipline: No CharacterController found."
             );
 
-            // Removed the continuous rotation overwrite line!
+            isZipping = false;
+            yield break;
+        }
+
+        // =====================================================
+        // ENTER ZIPLINE
+        // =====================================================
+
+        controller.isZiplining = true;
+
+        // Clear the controller's existing velocity.
+        // This prevents an old falling velocity from carrying
+        // into the zipline.
+        controller.currentVelocity = Vector3.zero;
+
+        // =====================================================
+        // CALCULATE ZIPLINE
+        // =====================================================
+
+        Vector3 heading =
+            endPoint.position -
+            transform.position;
+
+        float lineLength =
+            heading.magnitude;
+
+        if (lineLength <= 0.001f)
+        {
+            controller.isZiplining = false;
+            isZipping = false;
+            yield break;
+        }
+
+        Vector3 lineDir =
+            heading.normalized;
+
+        Vector3 flatHeading =
+            new Vector3(
+                heading.x,
+                0f,
+                heading.z
+            ).normalized;
+
+        // Side direction
+        Vector3 rightDirection =
+            new Vector3(
+                flatHeading.z,
+                0f,
+                -flatHeading.x
+            );
+
+        Vector3 offset =
+            (rightDirection * sideOffset) -
+            (Vector3.up * hangDistance);
+
+        Vector3 startPosition =
+            transform.position +
+            offset;
+
+        Vector3 endPosition =
+            endPoint.position +
+            offset;
+
+        // =====================================================
+        // FIND PLAYER'S POSITION ON ZIPLINE
+        // =====================================================
+
+        Vector3 playerToStart =
+            player.transform.position -
+            startPosition;
+
+        float distanceAlongLine =
+            Vector3.Dot(
+                playerToStart,
+                lineDir
+            );
+
+        distanceAlongLine =
+            Mathf.Clamp(
+                distanceAlongLine,
+                0f,
+                lineLength
+            );
+
+        Vector3 attachPosition =
+            startPosition +
+            lineDir *
+            distanceAlongLine;
+
+        // Move CharacterController to the rope
+        characterController.enabled = true;
+
+        characterController.Move(
+            attachPosition -
+            player.transform.position
+        );
+
+        // =====================================================
+        // FACE ZIPLINE
+        // =====================================================
+
+        if (flatHeading.sqrMagnitude > 0.001f)
+        {
+            player.transform.rotation =
+                Quaternion.LookRotation(
+                    flatHeading,
+                    Vector3.up
+                );
+        }
+
+        // =====================================================
+        // RIDE
+        // =====================================================
+
+        while (true)
+        {
+            // -------------------------------------------------
+            // SPACE = DETACH
+            // -------------------------------------------------
+
+            if (Keyboard.current != null &&
+                Keyboard.current.spaceKey.wasPressedThisFrame)
+            {
+                Detach(
+                    controller
+                );
+
+                yield break;
+            }
+
+            // -------------------------------------------------
+            // Distance to end
+            // -------------------------------------------------
+
+            float distanceToEnd =
+                Vector3.Distance(
+                    player.transform.position,
+                    endPosition
+                );
+
+            if (distanceToEnd <= 0.05f)
+            {
+                break;
+            }
+
+            // -------------------------------------------------
+            // Move toward endpoint
+            // -------------------------------------------------
+
+            Vector3 nextPosition =
+                Vector3.MoveTowards(
+                    player.transform.position,
+                    endPosition,
+                    speed * Time.deltaTime
+                );
+
+            Vector3 movement =
+                nextPosition -
+                player.transform.position;
+
+            characterController.Move(
+                movement
+            );
+
             yield return null;
         }
 
-        player.transform.position = targetPosWithOffset;
+        // =====================================================
+        // REACHED END
+        // =====================================================
 
-        if (controller != null) controller.enabled = true;
-        if (rb != null) rb.isKinematic = false;
+        Detach(controller);
+    }
 
-        yield return new WaitForSeconds(0.5f);
+    private void Detach(
+        FirstPersonController controller)
+    {
+        // Stop zipline mode first
+        controller.isZiplining = false;
+
+        // IMPORTANT:
+        // Clear any velocity left from before entering
+        // the zipline.
+        controller.currentVelocity =
+            Vector3.zero;
+
         isZipping = false;
     }
 }
-
-

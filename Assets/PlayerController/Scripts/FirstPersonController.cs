@@ -25,6 +25,7 @@ namespace EasyPeasyFirstPersonController
         public float groundDeceleration = 60f;
         public float airControl = 12f;
         [HideInInspector] public Vector3 currentVelocity;
+        [HideInInspector] public bool isZiplining = false;
 
         [Header("Advanced Mechanics")]
         public bool enableSmoothCrouch = true;
@@ -139,7 +140,10 @@ namespace EasyPeasyFirstPersonController
 
             isGrounded = characterController.isGrounded || Physics.CheckSphere(groundCheck.position, characterController.radius * 0.9f, groundMask, QueryTriggerInteraction.Ignore);
 
-            currentState.UpdateState();
+            if (!isZiplining)
+            {
+                currentState.UpdateState();
+            }
             HandleRotation();
             UpdateVisuals();
         }
