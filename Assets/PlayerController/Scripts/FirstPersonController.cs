@@ -45,6 +45,8 @@ namespace EasyPeasyFirstPersonController
         [HideInInspector] public Vector3 moveDirection;
         [HideInInspector] public bool isGrounded;
 
+        [HideInInspector] public Vector3 ziplineLaunchVelocity;
+
         private PlayerBaseState currentState;
         private PlayerStateFactory states;
         private float xRotation = 0f;

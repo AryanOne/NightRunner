@@ -8,12 +8,15 @@ public class Zipline : MonoBehaviour
     [Header("Zipline Targets")]
     public Transform endPoint;
 
-    [Header("Speed")]
+    [Header("Zipline Speed")]
     public float speed = 12f;
 
     [Header("Player Position")]
     public float sideOffset = 0.4f;
     public float hangDistance = 1.8f;
+
+    [Header("Detach")]
+    public float detachForwardBoost = 5f;
 
     private bool isZipping = false;
 
@@ -29,13 +32,7 @@ public class Zipline : MonoBehaviour
             other.GetComponent<FirstPersonController>();
 
         if (controller == null)
-        {
-            Debug.LogWarning(
-                "SimpleZipline: Player does not have FirstPersonController."
-            );
-
             return;
-        }
 
         StartCoroutine(
             RideZipline(
@@ -62,10 +59,6 @@ public class Zipline : MonoBehaviour
 
         if (characterController == null)
         {
-            Debug.LogWarning(
-                "SimpleZipline: No CharacterController found."
-            );
-
             isZipping = false;
             yield break;
         }
@@ -76,10 +69,9 @@ public class Zipline : MonoBehaviour
 
         controller.isZiplining = true;
 
-        // Clear the controller's existing velocity.
-        // This prevents an old falling velocity from carrying
-        // into the zipline.
-        controller.currentVelocity = Vector3.zero;
+        // Remove any old movement/falling velocity.
+        controller.currentVelocity =
+            Vector3.zero;
 
         // =====================================================
         // CALCULATE ZIPLINE
@@ -109,7 +101,6 @@ public class Zipline : MonoBehaviour
                 heading.z
             ).normalized;
 
-        // Side direction
         Vector3 rightDirection =
             new Vector3(
                 flatHeading.z,
@@ -130,7 +121,7 @@ public class Zipline : MonoBehaviour
             offset;
 
         // =====================================================
-        // FIND PLAYER'S POSITION ON ZIPLINE
+        // ATTACH PLAYER
         // =====================================================
 
         Vector3 playerToStart =
@@ -154,9 +145,6 @@ public class Zipline : MonoBehaviour
             startPosition +
             lineDir *
             distanceAlongLine;
-
-        // Move CharacterController to the rope
-        characterController.enabled = true;
 
         characterController.Move(
             attachPosition -
@@ -182,23 +170,17 @@ public class Zipline : MonoBehaviour
 
         while (true)
         {
-            // -------------------------------------------------
             // SPACE = DETACH
-            // -------------------------------------------------
-
             if (Keyboard.current != null &&
                 Keyboard.current.spaceKey.wasPressedThisFrame)
             {
                 Detach(
+                    player,
                     controller
                 );
 
                 yield break;
             }
-
-            // -------------------------------------------------
-            // Distance to end
-            // -------------------------------------------------
 
             float distanceToEnd =
                 Vector3.Distance(
@@ -207,13 +189,7 @@ public class Zipline : MonoBehaviour
                 );
 
             if (distanceToEnd <= 0.05f)
-            {
                 break;
-            }
-
-            // -------------------------------------------------
-            // Move toward endpoint
-            // -------------------------------------------------
 
             Vector3 nextPosition =
                 Vector3.MoveTowards(
@@ -237,20 +213,31 @@ public class Zipline : MonoBehaviour
         // REACHED END
         // =====================================================
 
-        Detach(controller);
+        controller.isZiplining = false;
+
+        controller.currentVelocity =
+            Vector3.zero;
+
+        isZipping = false;
     }
 
     private void Detach(
+        GameObject player,
         FirstPersonController controller)
     {
-        // Stop zipline mode first
+        // Stop zipline mode
         controller.isZiplining = false;
 
-        // IMPORTANT:
-        // Clear any velocity left from before entering
-        // the zipline.
+        // -----------------------------------------------------
+        // Give the player forward momentum
+        // -----------------------------------------------------
+
+        Vector3 forwardBoost =
+            player.transform.forward *
+            detachForwardBoost;
+
         controller.currentVelocity =
-            Vector3.zero;
+            forwardBoost;
 
         isZipping = false;
     }
